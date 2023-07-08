@@ -104,13 +104,21 @@ class AugAssignToWCR(transformation.SingleStateTransformation):
                     return True
         elif tasklet.language is dtypes.Language.CPP:
             cstr = tasklet.code.as_string.strip()
+            inconns = list(tasklet.in_connectors)
             for edge in inedges:
                 # Try to match a single C assignment that can be converted to WCR
                 inconn = edge.dst_conn
-                lhs = r'^\s*%s\s*=\s*%s\s*%s.*;$' % (re.escape(outconn), re.escape(inconn), ops)
-                rhs = r'^\s*%s\s*=\s*.*%s\s*%s;$' % (re.escape(outconn), ops, re.escape(inconn))
-                if re.match(lhs, cstr) is None:
-                    continue
+                p1 = r'^\s*%s\s*=\s*%s\s*%s\s\(.*\);$' % (re.escape(outconn), re.escape(inconn), ops)
+                p2 = r'^\s*%s\s*=\s*\(.*\)\s*%s\s*%s;$' % (re.escape(outconn), ops, re.escape(inconn))
+                if re.match(p1, cstr) is None and re.match(p2, cstr) is None:
+                    if len(inconns) != 2:
+                        continue
+
+                    other = inconns[0] if inconns[0] != inconn else inconns[1]
+                    p3 = r'^\s*%s\s*=\s*%s\s*%s\s*%s;$' % (re.escape(outconn), re.escape(other), ops, re.escape(inconn))
+                    if re.match(p3, cstr) is None:
+                        continue
+
                 # Same memlet
                 if edge.data.subset != outedge.data.subset:
                     continue
@@ -202,17 +210,31 @@ class AugAssignToWCR(transformation.SingleStateTransformation):
 
         elif tasklet.language is dtypes.Language.CPP:
             cstr = tasklet.code.as_string.strip()
+            inconns = list(tasklet.in_connectors)
             for edge in inedges:
                 inconn = edge.dst_conn
-                match = re.match(r'^\s*%s\s*=\s*%s\s*(%s)(.*);$' % (re.escape(outconn), re.escape(inconn), ops), cstr)
+
+                p1 = r'^\s*%s\s*=\s*%s\s*(%s)\s\((.*)\);$' % (re.escape(outconn), re.escape(inconn), ops)
+                match = re.match(p1, cstr)
                 if match is None:
-                    # match = re.match(
-                    #     r'^\s*%s\s*=\s*(.*)\s*(%s)\s*%s;$' %
-                    #     (re.escape(outconn), ops, re.escape(inconn)), cstr)
-                    # if match is None:
-                    continue
-                    # op = match.group(2)
-                    # expr = match.group(1)
+                    p2 = r'^\s*%s\s*=\s*\((.*)\)\s*(%s)\s*%s;$' % (re.escape(outconn), ops, re.escape(inconn))
+                    match = re.match(p2, cstr)
+                    if match is None:
+                        if len(inconns) != 2:
+                            continue
+
+                        other = inconns[0] if inconns[0] != inconn else inconns[1]
+                        p3 = r'^\s*%s\s*=\s*(%s)\s*(%s)\s*%s;$' % (re.escape(outconn), re.escape(other), ops,
+                                                                   re.escape(inconn))
+                        match = re.match(p3, cstr)
+                        if match is None:
+                            continue
+
+                        op = match.group(2)
+                        expr = match.group(1)
+                    else:
+                        op = match.group(2)
+                        expr = match.group(1)
                 else:
                     op = match.group(1)
                     expr = match.group(2)

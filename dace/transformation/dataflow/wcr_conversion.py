@@ -112,7 +112,7 @@ class AugAssignToWCR(transformation.SingleStateTransformation):
             for edge in inedges:
                 # Try to match a single C assignment that can be converted to WCR
                 inconn = edge.dst_conn
-                p1 = r'^\s*%s\s*=\s*%s\s*%s\s\(.*\);$' % (re.escape(outconn), re.escape(inconn), ops)
+                p1 = r'^\s*%s\s*=\s*%s\s*%s\s*\(.*\);$' % (re.escape(outconn), re.escape(inconn), ops)
                 p2 = r'^\s*%s\s*=\s*\(.*\)\s*%s\s*%s;$' % (re.escape(outconn), ops, re.escape(inconn))
                 if re.match(p1, cstr) is None and re.match(p2, cstr) is None:
                     if len(inconns) != 2:
@@ -127,11 +127,6 @@ class AugAssignToWCR(transformation.SingleStateTransformation):
                 if edge.data.subset != outedge.data.subset:
                     continue
 
-                # If in map, only match if the subset is independent of any
-                # map indices (otherwise no conflict)
-                if (expr_index == 1 and len(outedge.data.subset.free_symbols
-                                            & set(me.map.params)) == len(me.map.params)):
-                    continue
 
                 return True
         else:
@@ -218,7 +213,7 @@ class AugAssignToWCR(transformation.SingleStateTransformation):
             for edge in inedges:
                 inconn = edge.dst_conn
 
-                p1 = r'^\s*%s\s*=\s*%s\s*(%s)\s\((.*)\);$' % (re.escape(outconn), re.escape(inconn), ops)
+                p1 = r'^\s*%s\s*=\s*%s\s*(%s)\s*\((.*)\);$' % (re.escape(outconn), re.escape(inconn), ops)
                 match = re.match(p1, cstr)
                 if match is None:
                     p2 = r'^\s*%s\s*=\s*\((.*)\)\s*(%s)\s*%s;$' % (re.escape(outconn), ops, re.escape(inconn))

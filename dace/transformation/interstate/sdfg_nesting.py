@@ -108,6 +108,7 @@ class InlineSDFG(transformation.SingleStateTransformation):
         # is not empty
         in_connectors = set()
         out_connectors = set()
+        wcrs = set()
         for edge in graph.in_edges(nested_sdfg):
             if edge.dst_conn in in_connectors:
                 return False
@@ -124,6 +125,13 @@ class InlineSDFG(transformation.SingleStateTransformation):
             # NOTE: Empty memlets do not attach to connectors
             if edge.src_conn or not edge.data.is_empty():
                 out_connectors.add(edge.src_conn)
+                if edge.data.wcr is not None:
+                    wcrs.add(edge.src_conn)
+
+        # Ensure write-after-read dependencies are met
+        for out_conn in wcrs:
+            if out_conn in in_connectors:
+                return False
 
         # Ensure output connectors have no additional outputs (if in a scope),
         # and ensure no two connectors are directly connected to each other

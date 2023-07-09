@@ -27,6 +27,7 @@ class AugAssignToWCR(transformation.SingleStateTransformation):
     def expressions(cls):
         return [
             sdutil.node_path_graph(cls.input, cls.tasklet, cls.output),
+            sdutil.node_path_graph(cls.input, cls.map_entry, cls.tasklet, cls.map_exit, cls.output)
         ]
 
     def can_be_applied(self, graph, expr_index, sdfg, permissive=False):
@@ -34,6 +35,9 @@ class AugAssignToWCR(transformation.SingleStateTransformation):
         tasklet = self.tasklet
         outarr = self.output
         if inarr.data != outarr.data:
+            return False
+
+        if expr_index == 1 and not permissive:
             return False
 
         # Free tasklet
